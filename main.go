@@ -1,13 +1,27 @@
 package main
 
 import (
-	"crypto/rand"
+	"crypto/md5"
+	"fmt"
+	"hash"
+	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/pressly/chi"
 )
+
+var db storage
+var h hash.Hash
+
+func init() {
+	db = *newStorage()
+	h = md5.New()
+}
 
 func main() {
 	r := chi.NewRouter()
@@ -24,6 +38,8 @@ func main() {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
+	t, _ := template.ParseFiles("home.html")
+	t.Execute(w, nil)
 }
 
 func submit(w http.ResponseWriter, r *http.Request) {
@@ -43,11 +59,15 @@ func open(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("URL Not Found"))
 }
 
-var db storage
-
 type storage struct {
 	sync.RWMutex
 	data map[string]string
+}
+
+func newStorage() *storage {
+	return &storage{
+		data: make(map[string]string),
+	}
 }
 
 func (s *storage) Add(url string) (name string) {
@@ -66,9 +86,7 @@ func (s *storage) Get(name string) (url string, ok bool) {
 }
 
 func generateName() string {
-	b := make([]byte, 5)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return string(b)
+	crutime := time.Now().Unix()
+	io.WriteString(h, strconv.FormatInt(crutime, 10))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
