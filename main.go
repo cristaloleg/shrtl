@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"log"
 	"net/http"
 	"sync"
@@ -26,9 +27,20 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func submit(w http.ResponseWriter, r *http.Request) {
+	url := r.PostFormValue("url")
+	name := db.Add(url)
+	w.Write([]byte(name))
 }
 
 func open(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Path[1:]
+
+	if url, ok := db.Get(name); ok {
+		http.Redirect(w, r, url, http.StatusPermanentRedirect)
+	}
+
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("URL Not Found"))
 }
 
 var db storage
@@ -54,5 +66,9 @@ func (s *storage) Get(name string) (url string, ok bool) {
 }
 
 func generateName() string {
-	return ""
+	b := make([]byte, 5)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	return string(b)
 }
