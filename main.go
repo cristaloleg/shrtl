@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var db storage
@@ -36,6 +37,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		case method == "POST":
 			url := r.PostFormValue("url")
+			if !strings.HasPrefix("http://", url) {
+				url = "http://" + url
+			}
 			name := db.Add(url)
 			st.Add(url)
 			w.Write([]byte(name))
