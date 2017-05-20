@@ -10,10 +10,12 @@ import (
 
 var db storage
 var st stats
+var homeTmpl *template.Template
 
 func init() {
 	db = newStorage()
 	st = newStats()
+	homeTmpl, _ = template.ParseFiles("home.html")
 }
 
 func main() {
@@ -31,8 +33,7 @@ func main() {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("home.html")
-	t.Execute(w, nil)
+	homeTmpl.Execute(w, nil)
 }
 
 func submit(w http.ResponseWriter, r *http.Request) {
