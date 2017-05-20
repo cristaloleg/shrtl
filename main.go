@@ -4,8 +4,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-
-	"github.com/pressly/chi"
 )
 
 var db storage
@@ -19,38 +17,45 @@ func init() {
 }
 
 func main() {
-	r := chi.NewRouter()
+	http.HandleFunc("/", handler)
 
-	r.Get("/", home)
-	r.Post("/", submit)
-	r.Get("/:name", open)
-	r.Post("/:name", open)
-
-	err := http.ListenAndServe(":3000", r)
+	err := http.ListenAndServe(":3000", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	homeTmpl.Execute(w, nil)
-}
+func handler(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Path
+	method := r.Method
 
-func submit(w http.ResponseWriter, r *http.Request) {
-	url := r.PostFormValue("url")
-	name := db.Add(url)
-	st.Add(url)
-	w.Write([]byte(name))
-}
+	if url == "/" {
+		switch {
+		case method == "GET":
+			homeTmpl.Execute(w, nil)
 
-func open(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Path[1:]
+		case method == "POST":
+			url := r.PostFormValue("url")
+			name := db.Add(url)
+			st.Add(url)
+			w.Write([]byte(name))
 
-	if url, ok := db.Get(name); ok {
-		http.Redirect(w, r, url, http.StatusPermanentRedirect)
-		st.Inc(name)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	} else {
+		if method != "GET" && method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		name := url[1:]
+
+		if url, ok := db.Get(name); ok {
+			http.Redirect(w, r, url, http.StatusPermanentRedirect)
+			st.Inc(name)
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("URL Not Found"))
 	}
-
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("URL Not Found"))
 }
