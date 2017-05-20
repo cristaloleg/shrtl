@@ -17,10 +17,25 @@ import (
 
 var db storage
 var h hash.Hash
+var stats map[string]uint64
+var ch chan string
 
 func init() {
 	db = *newStorage()
 	h = md5.New()
+	stats = make(map[string]uint64)
+	ch = make(chan string, 1024)
+
+	go func() {
+		for {
+			name := <-ch
+			value, ok := stats[name]
+			if ok {
+				value++
+				stats[name] = value
+			}
+		}
+	}()
 }
 
 func main() {
@@ -53,6 +68,7 @@ func open(w http.ResponseWriter, r *http.Request) {
 
 	if url, ok := db.Get(name); ok {
 		http.Redirect(w, r, url, http.StatusPermanentRedirect)
+		statsUpdate(name)
 	}
 
 	w.WriteHeader(http.StatusNotFound)
@@ -89,4 +105,8 @@ func generateName() string {
 	crutime := time.Now().Unix()
 	io.WriteString(h, strconv.FormatInt(crutime, 10))
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func statsUpdate(name string) {
+	ch <- name
 }
