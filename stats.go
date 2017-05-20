@@ -21,13 +21,13 @@ func (s *stats) Add(name string) {
 }
 
 func (s *stats) Inc(name string) {
-	ch <- name
+	s.ch <- name
 }
 
 func (s *stats) listen() {
 	for {
 		select {
-		case name := <-ch:
+		case name := <-s.ch:
 			s.data[name]++
 		}
 	}
