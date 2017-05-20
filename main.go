@@ -1,39 +1,19 @@
 package main
 
 import (
-	"crypto/md5"
-	"hash"
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
-	"sync"
-	"time"
 
 	"github.com/pressly/chi"
 )
 
 var db storage
-var h hash.Hash
-var stats map[string]uint64
-var ch chan string
+var st stats
 
 func init() {
-	db = *newStorage()
-	h = md5.New()
-	stats = make(map[string]uint64)
-	ch = make(chan string, 1024)
-
-	go func() {
-		for {
-			name := <-ch
-			value, ok := stats[name]
-			if ok {
-				value++
-				stats[name] = value
-			}
-		}
-	}()
+	db = newStorage()
+	st = newStats()
 }
 
 func main() {
@@ -58,6 +38,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 func submit(w http.ResponseWriter, r *http.Request) {
 	url := r.PostFormValue("url")
 	name := db.Add(url)
+	st.Add(url)
 	w.Write([]byte(name))
 }
 
@@ -66,44 +47,9 @@ func open(w http.ResponseWriter, r *http.Request) {
 
 	if url, ok := db.Get(name); ok {
 		http.Redirect(w, r, url, http.StatusPermanentRedirect)
-		statsUpdate(name)
+		st.Inc(name)
 	}
 
 	w.WriteHeader(http.StatusNotFound)
 	w.Write([]byte("URL Not Found"))
-}
-
-type storage struct {
-	sync.RWMutex
-	data map[string]string
-}
-
-func newStorage() *storage {
-	return &storage{
-		data: make(map[string]string),
-	}
-}
-
-func (s *storage) Add(url string) (name string) {
-	name = generateName()
-	s.Lock()
-	s.data[name] = url
-	s.Unlock()
-	return name
-}
-
-func (s *storage) Get(name string) (url string, ok bool) {
-	s.RLock()
-	url, ok = s.data[name]
-	s.RUnlock()
-	return url, ok
-}
-
-func generateName() string {
-	cputime := time.Now().Unix()
-	return strconv.FormatInt(cputime, 36)
-}
-
-func statsUpdate(name string) {
-	ch <- name
 }
