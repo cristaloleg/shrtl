@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/md5"
-	"fmt"
 	"hash"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -102,9 +100,8 @@ func (s *storage) Get(name string) (url string, ok bool) {
 }
 
 func generateName() string {
-	crutime := time.Now().Unix()
-	io.WriteString(h, strconv.FormatInt(crutime, 10))
-	return fmt.Sprintf("%x", h.Sum(nil))
+	cputime := time.Now().Unix()
+	return strconv.FormatInt(cputime, 36)
 }
 
 func statsUpdate(name string) {
